@@ -27,6 +27,10 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+app.post("/health-check", async (req, res) => {
+  return res.status(200).json({ message: "Ok" });
+});
+
 app.post("/validate-cert", async (req, res) => {
   const { certFileName } = req.body;
 
