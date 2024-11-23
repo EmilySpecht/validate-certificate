@@ -12,12 +12,13 @@ import multer from "multer";
 import { exec } from "child_process";
 import path from "path";
 import cors from "cors";
+import fsAsync from "fs/promises";
 import fs from "fs";
 import forge from "node-forge";
 import { fileURLToPath } from "url";
 
-multer({ dest: "/tmp/uploads-cert/" });
-multer({ dest: "/tmp/uploads-ca/" });
+multer({ dest: "tmp/uploads-cert/" });
+multer({ dest: "tmp/uploads-ca/" });
 
 const app = express();
 
@@ -31,16 +32,42 @@ app.get("/health-check", async (req, res) => {
   return res.status(200).json({ message: "Ok" });
 });
 
+async function clearDirectory(directoryPath) {
+  try {
+    const files = await fsAsync.readdir(directoryPath);
+    await Promise.all(
+      files.map((file) => fsAsync.unlink(path.join(directoryPath, file)))
+    );
+    console.log(`Arquivos de ${directoryPath} foram removidos com sucesso.`);
+  } catch (error) {
+    console.error(`Erro ao limpar o diretório ${directoryPath}:`, error);
+  }
+}
+
+const uploadsCaDir = path.join(process.cwd(), "tmp/uploads-ca");
+const uploadsCertDir = path.join(process.cwd(), "tmp/uploads-cert");
+app.delete("/clear-uploads", async (req, res) => {
+  try {
+    await clearDirectory(uploadsCaDir);
+    await clearDirectory(uploadsCertDir);
+    res
+      .status(200)
+      .json({ message: "Todos os arquivos foram removidos com sucesso." });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Erro ao remover os arquivos.", details: error.message });
+  }
+});
+
 app.post("/validate-cert", async (req, res) => {
   const { certFileName } = req.body;
 
   if (!certFileName) return res.status(400).json({ error: MANDATORY_FILENAME });
 
-  // Caminho para a pasta onde os certificados e CAs estão armazenados
-  const certsDir = path.join(__dirname, "/tmp/uploads-cert");
+  const certsDir = path.join(__dirname, "tmp/uploads-cert");
   const certPath = path.join(certsDir, certFileName);
 
-  // Verificar se o arquivo do certificado existe
   if (!fs.existsSync(certPath))
     return res.status(404).json({ error: CERT_NOT_FOUND });
 
@@ -48,7 +75,7 @@ app.post("/validate-cert", async (req, res) => {
     let result = [];
     tryToValidateSignatureAndExpirationDate(certPath, result);
 
-    const caDir = path.join(__dirname, "/tmp/uploads-ca");
+    const caDir = path.join(__dirname, "tmp/uploads-ca");
     if (!fs.existsSync(caDir))
       return res.status(200).json({
         message: NO_CA,
@@ -70,14 +97,15 @@ app.post("/validate-cert", async (req, res) => {
 
       for (const caFile of caFiles) {
         const caPath = path.join(caDir, caFile);
-        console.log(caPath, certPath);
+        console.log(`openssl verify -CAfile "${caPath}" "${certPath}"`);
         try {
           const a = await execPromise(
             `openssl verify -CAfile "${caPath}" "${certPath}"`
           );
-          console.log("a", a);
           isValidCA = true;
-        } catch (e) {}
+        } catch (e) {
+          console.log(e);
+        }
       }
 
       return isValidCA;
@@ -143,9 +171,9 @@ const isAutoSignature = (certificate) => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (req.path.includes("/upload-ca")) {
-      cb(null, "/tmp/uploads-ca/");
+      cb(null, "tmp/uploads-ca/");
     } else if (req.path.includes("/upload-cert")) {
-      cb(null, "/tmp/uploads-cert/");
+      cb(null, "tmp/uploads-cert/");
     }
   },
   filename: (req, file, cb) => {
@@ -214,7 +242,7 @@ const {
   CONCLUDED_VALIDATION: "Validação concluída.",
 };
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 app.listen(port, () => console.log(`Servidor rodando na porta ${port}`));
 
