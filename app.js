@@ -27,7 +27,7 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.post("/health-check", async (req, res) => {
+app.get("/health-check", async (req, res) => {
   return res.status(200).json({ message: "Ok" });
 });
 
@@ -214,4 +214,8 @@ const {
   CONCLUDED_VALIDATION: "Validação concluída.",
 };
 
-app.listen(3001, () => console.log("Servidor rodando na porta 3001"));
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => console.log(`Servidor rodando na porta ${port}`));
+
+export default app;
