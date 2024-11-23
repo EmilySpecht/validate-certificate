@@ -16,8 +16,8 @@ import fs from "fs";
 import forge from "node-forge";
 import { fileURLToPath } from "url";
 
-multer({ dest: "uploads-cert/" });
-multer({ dest: "uploads-ca/" });
+multer({ dest: "/tmp/uploads-cert/" });
+multer({ dest: "/tmp/uploads-ca/" });
 
 const app = express();
 
@@ -37,7 +37,7 @@ app.post("/validate-cert", async (req, res) => {
   if (!certFileName) return res.status(400).json({ error: MANDATORY_FILENAME });
 
   // Caminho para a pasta onde os certificados e CAs estão armazenados
-  const certsDir = path.join(__dirname, "uploads-cert");
+  const certsDir = path.join(__dirname, "/tmp/uploads-cert");
   const certPath = path.join(certsDir, certFileName);
 
   // Verificar se o arquivo do certificado existe
@@ -48,7 +48,7 @@ app.post("/validate-cert", async (req, res) => {
     let result = [];
     tryToValidateSignatureAndExpirationDate(certPath, result);
 
-    const caDir = path.join(__dirname, "uploads-ca");
+    const caDir = path.join(__dirname, "/tmp/uploads-ca");
     if (!fs.existsSync(caDir))
       return res.status(200).json({
         message: NO_CA,
@@ -143,9 +143,9 @@ const isAutoSignature = (certificate) => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (req.path.includes("/upload-ca")) {
-      cb(null, "uploads-ca/");
+      cb(null, "/tmp/uploads-ca/");
     } else if (req.path.includes("/upload-cert")) {
-      cb(null, "uploads-cert/");
+      cb(null, "/tmp/uploads-cert/");
     }
   },
   filename: (req, file, cb) => {
