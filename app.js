@@ -17,8 +17,8 @@ import fs from "fs";
 import forge from "node-forge";
 import { fileURLToPath } from "url";
 
-multer({ dest: "tmp/uploads-cert/" });
-multer({ dest: "tmp/uploads-ca/" });
+multer({ dest: "/tmp/uploads-cert/" });
+multer({ dest: "/tmp/uploads-ca/" });
 
 const app = express();
 
@@ -44,8 +44,8 @@ async function clearDirectory(directoryPath) {
   }
 }
 
-const uploadsCaDir = path.join(process.cwd(), "tmp/uploads-ca");
-const uploadsCertDir = path.join(process.cwd(), "tmp/uploads-cert");
+const uploadsCaDir = path.join("/tmp/uploads-ca");
+const uploadsCertDir = path.join("/tmp/uploads-cert");
 app.delete("/clear-uploads", async (req, res) => {
   try {
     await clearDirectory(uploadsCaDir);
@@ -65,7 +65,8 @@ app.post("/validate-cert", async (req, res) => {
 
   if (!certFileName) return res.status(400).json({ error: MANDATORY_FILENAME });
 
-  const certsDir = path.join(__dirname, "tmp/uploads-cert");
+  // const certsDir = path.join(__dirname, "/tmp/uploads-cert");
+  const certsDir = path.join("/tmp/uploads-cert");
   const certPath = path.join(certsDir, certFileName);
 
   if (!fs.existsSync(certPath))
@@ -75,7 +76,8 @@ app.post("/validate-cert", async (req, res) => {
     let result = [];
     tryToValidateSignatureAndExpirationDate(certPath, result);
 
-    const caDir = path.join(__dirname, "tmp/uploads-ca");
+    // const caDir = path.join(__dirname, "/tmp/uploads-ca");
+    const caDir = path.join("/tmp/uploads-ca");
     if (!fs.existsSync(caDir))
       return res.status(200).json({
         message: NO_CA,
@@ -97,11 +99,9 @@ app.post("/validate-cert", async (req, res) => {
 
       for (const caFile of caFiles) {
         const caPath = path.join(caDir, caFile);
-        console.log(`openssl verify -CAfile "${caPath}" "${certPath}"`);
+
         try {
-          const a = await execPromise(
-            `openssl verify -CAfile "${caPath}" "${certPath}"`
-          );
+          await execPromise(`openssl verify -CAfile "${caPath}" "${certPath}"`);
           isValidCA = true;
         } catch (e) {
           console.log(e);
@@ -171,9 +171,9 @@ const isAutoSignature = (certificate) => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (req.path.includes("/upload-ca")) {
-      cb(null, "tmp/uploads-ca/");
+      cb(null, "/tmp/uploads-ca/");
     } else if (req.path.includes("/upload-cert")) {
-      cb(null, "tmp/uploads-cert/");
+      cb(null, "/tmp/uploads-cert/");
     }
   },
   filename: (req, file, cb) => {
