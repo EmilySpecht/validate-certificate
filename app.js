@@ -22,7 +22,7 @@ multer({ dest: "/tmp/uploads-ca/" });
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({ origin: "http://localhost:80" }));
 app.use(express.json());
 
 const __filename = fileURLToPath(import.meta.url);
